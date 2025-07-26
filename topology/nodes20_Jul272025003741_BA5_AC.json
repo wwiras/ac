@@ -1,0 +1,164 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "id": "gossip-0"
+    },
+    {
+      "id": "gossip-1"
+    },
+    {
+      "id": "gossip-2"
+    },
+    {
+      "id": "gossip-3"
+    },
+    {
+      "id": "gossip-4"
+    },
+    {
+      "id": "gossip-5"
+    },
+    {
+      "id": "gossip-6"
+    },
+    {
+      "id": "gossip-7"
+    },
+    {
+      "id": "gossip-8"
+    },
+    {
+      "id": "gossip-9"
+    },
+    {
+      "id": "gossip-10"
+    },
+    {
+      "id": "gossip-11"
+    },
+    {
+      "id": "gossip-12"
+    },
+    {
+      "id": "gossip-13"
+    },
+    {
+      "id": "gossip-14"
+    },
+    {
+      "id": "gossip-15"
+    },
+    {
+      "id": "gossip-16"
+    },
+    {
+      "id": "gossip-17"
+    },
+    {
+      "id": "gossip-18"
+    },
+    {
+      "id": "gossip-19"
+    }
+  ],
+  "edges": [
+    {
+      "source": "gossip-6",
+      "target": "gossip-4",
+      "weight": 13.0
+    },
+    {
+      "source": "gossip-6",
+      "target": "gossip-8",
+      "weight": 14.0
+    },
+    {
+      "source": "gossip-6",
+      "target": "gossip-12",
+      "weight": 41.0
+    },
+    {
+      "source": "gossip-12",
+      "target": "gossip-17",
+      "weight": 33.0
+    },
+    {
+      "source": "gossip-4",
+      "target": "gossip-15",
+      "weight": 32.0
+    },
+    {
+      "source": "gossip-15",
+      "target": "gossip-0",
+      "weight": 25.0
+    },
+    {
+      "source": "gossip-0",
+      "target": "gossip-3",
+      "weight": 16.0
+    },
+    {
+      "source": "gossip-7",
+      "target": "gossip-9",
+      "weight": 15.0
+    },
+    {
+      "source": "gossip-7",
+      "target": "gossip-5",
+      "weight": 30.0
+    },
+    {
+      "source": "gossip-1",
+      "target": "gossip-19",
+      "weight": 22.0
+    },
+    {
+      "source": "gossip-13",
+      "target": "gossip-1",
+      "weight": 17.0
+    },
+    {
+      "source": "gossip-1",
+      "target": "gossip-10",
+      "weight": 11.0
+    },
+    {
+      "source": "gossip-13",
+      "target": "gossip-7",
+      "weight": 14.0
+    },
+    {
+      "source": "gossip-0",
+      "target": "gossip-13",
+      "weight": 16.0
+    },
+    {
+      "source": "gossip-2",
+      "target": "gossip-18",
+      "weight": 73.0
+    },
+    {
+      "source": "gossip-7",
+      "target": "gossip-14",
+      "weight": 32.0
+    },
+    {
+      "source": "gossip-10",
+      "target": "gossip-16",
+      "weight": 22.0
+    },
+    {
+      "source": "gossip-7",
+      "target": "gossip-2",
+      "weight": 19.0
+    },
+    {
+      "source": "gossip-2",
+      "target": "gossip-11",
+      "weight": 13.0
+    }
+  ]
+}

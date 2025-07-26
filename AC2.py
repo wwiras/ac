@@ -2,7 +2,7 @@ import json
 import numpy as np
 import argparse
 import os
-import random  # Import the random module for leader selection
+import random
 
 
 def load_graph_from_json(json_file_path):
@@ -23,18 +23,14 @@ def load_graph_from_json(json_file_path):
     with open(json_file_path, 'r') as f:
         graph_data = json.load(f)
 
-    # Extract node IDs and create a mapping to continuous indices
     node_ids = [node['id'] for node in graph_data['nodes']]
     num_nodes = len(node_ids)
 
     id_to_index = {node_id: i for i, node_id in enumerate(node_ids)}
 
-    # Initialize the distance matrix with infinity
-    # This represents unconnected nodes having an infinite distance
     distance_matrix = np.full((num_nodes, num_nodes), float('inf'))
     np.fill_diagonal(distance_matrix, 0)
 
-    # Populate the matrix with edge weights
     for edge in graph_data['edges']:
         source_id = edge['source']
         target_id = edge['target']
@@ -43,7 +39,6 @@ def load_graph_from_json(json_file_path):
         source_index = id_to_index[source_id]
         target_index = id_to_index[target_id]
 
-        # Since the graph is undirected, the matrix is symmetric
         distance_matrix[source_index, target_index] = weight
         distance_matrix[target_index, source_index] = weight
 
@@ -52,37 +47,25 @@ def load_graph_from_json(json_file_path):
 
 def calculate_distance(cluster_a, cluster_b, distance_matrix):
     """
-    Calculates the distance between two clusters using complete linkage (farthest neighbor).
-    The distance between two clusters is defined as the maximum distance between
-    any node in the first cluster and any node in the second cluster.
-
-    Returns float('inf') if no valid (finite, non-self-loop) connections exist
-    between the two clusters.
+    Calculates the distance between two clusters using complete linkage.
     """
-    # Initialize current_max_distance to negative infinity to correctly find the maximum
-    # among positive distances, or ensure it remains -inf if no valid connections.
     current_max_distance = float('-inf')
     found_valid_connection = False
 
     for node_i in cluster_a:
         for node_j in cluster_b:
-            # Skip if comparing a node to itself (distance 0)
             if node_i == node_j:
                 continue
 
             distance = distance_matrix[node_i][node_j]
 
-            # Skip if there's no connection (distance inf)
             if distance == float('inf'):
                 continue
 
-            # If we reach here, 'distance' is a valid, finite, non-self-loop distance
             found_valid_connection = True
             if distance > current_max_distance:
                 current_max_distance = distance
 
-    # If no valid connections were found between the two clusters,
-    # it means they are effectively infinitely far apart for complete linkage.
     if not found_valid_connection:
         return float('inf')
     else:
@@ -91,18 +74,16 @@ def calculate_distance(cluster_a, cluster_b, distance_matrix):
 
 def agglomerative_clustering(num_nodes, num_clusters, distance_matrix):
     """
-    Performs agglomerative clustering based on the provided algorithm description.
+    Performs agglomerative clustering.
     """
-    # 9: Initialize C where each ci contains one node si.
     clusters = [[i] for i in range(num_nodes)]
 
     while len(clusters) > num_clusters:
         min_distance = float('inf')
         clusters_to_merge = None
 
-        # 12: Find the pair of clusters with minimum D(ci, cj)
         for i in range(len(clusters)):
-            for j in range(i + 1, len(clusters)):  # Iterate through unique pairs
+            for j in range(i + 1, len(clusters)):
                 distance = calculate_distance(clusters[i], clusters[j], distance_matrix)
 
                 if distance < min_distance:
@@ -112,15 +93,11 @@ def agglomerative_clustering(num_nodes, num_clusters, distance_matrix):
         if clusters_to_merge is not None:
             index_a, index_b = clusters_to_merge
 
-            # Ensure the indices are sorted to avoid issues when removing
-            # Remove the higher index first to avoid shifting issues
             if index_a > index_b:
                 index_a, index_b = index_b, index_a
 
-            # 13: Merge the two clusters
             new_cluster = clusters[index_a] + clusters[index_b]
 
-            # 14: Update C: Remove old clusters and add the new one
             clusters.pop(index_b)
             clusters.pop(index_a)
             clusters.append(new_cluster)
@@ -128,46 +105,168 @@ def agglomerative_clustering(num_nodes, num_clusters, distance_matrix):
             print("Warning: No more clusters could be merged. Remaining clusters might be disconnected.")
             break
 
-    # 17: Return C
     return clusters
 
 
 def select_cluster_leaders(clusters, index_to_id_map):
     """
     Selects a leader for each cluster randomly.
-    This implements Step-2: Cluster Leader Selection.
-
-    Args:
-        clusters (list): A list of lists, where each inner list is a cluster of node indices.
-        index_to_id_map (dict): A mapping from node index to original node ID.
-
-    Returns:
-        dict: A dictionary mapping each cluster's index to its randomly selected leader's ID.
     """
     cluster_leaders = {}
     for i, cluster in enumerate(clusters):
-        # Randomly select a node from the cluster
         leader_index = random.choice(cluster)
-
-        # Get the original node ID
         leader_id = index_to_id_map[leader_index]
-
-        # Store the leader for this cluster
         cluster_leaders[f"Cluster {i + 1}"] = leader_id
-
     return cluster_leaders
 
 
+def compute_mst_for_cluster(cluster_nodes, distance_matrix, start_node_index):
+    """
+    Constructs an MST for a single cluster using a Prim's-like approach.
+    """
+    local_index_map = {node: i for i, node in enumerate(cluster_nodes)}
+
+    num_cluster_nodes = len(cluster_nodes)
+    start_local_index = local_index_map[start_node_index]
+
+    d = np.full(num_cluster_nodes, float('inf'))
+    p = np.full(num_cluster_nodes, -1, dtype=int)
+
+    d[start_local_index] = 0
+    Q = set(range(num_cluster_nodes))
+
+    while Q:
+        u_local_index = min(Q, key=lambda i: d[i])
+        u_global_index = cluster_nodes[u_local_index]
+
+        if d[u_local_index] == float('inf'):
+            print(f"  Warning: Sub-graph disconnected from start node. Cannot build full MST.")
+            break
+
+        Q.remove(u_local_index)
+
+        for v_local_index in Q:
+            v_global_index = cluster_nodes[v_local_index]
+            weight = distance_matrix[u_global_index, v_global_index]
+
+            if weight < d[v_local_index]:
+                d[v_local_index] = weight
+                p[v_local_index] = u_local_index
+
+    mst_edges = []
+    root_node_index = start_node_index
+
+    for i in range(num_cluster_nodes):
+        if i == start_local_index:
+            continue
+
+        child_global_index = cluster_nodes[i]
+        parent_local_index = p[i]
+
+        if parent_local_index != -1:
+            parent_global_index = cluster_nodes[parent_local_index]
+            edge_weight = distance_matrix[parent_global_index, child_global_index]
+            mst_edges.append((parent_global_index, child_global_index, edge_weight))
+
+    return mst_edges, root_node_index
+
+
+def construct_comprehensive_mst(clusters, distance_matrix):
+    """
+    Constructs a comprehensive MST (MSTcom) for the entire network.
+    """
+    comprehensive_mst = []
+    root_nodes = []
+    cluster_mst_edges = []
+
+    print("\n--- Phase 3: MST Construction (Parallel Logic) ---")
+
+    for i, cluster in enumerate(clusters):
+        start_node_index = cluster[0]
+
+        mst_edges, root_node_index = compute_mst_for_cluster(cluster, distance_matrix, start_node_index)
+
+        root_nodes.append(root_node_index)
+        cluster_mst_edges.append(mst_edges)
+
+        print(f"  Cluster {i + 1} MST Edges (Root: {root_node_index}):")
+        for edge in mst_edges:
+            print(f"    Edge: {edge[0]} -> {edge[1]}, Weight: {edge[2]}")
+
+    print("\n--- Connecting MST Root Nodes ---")
+    if len(root_nodes) > 1:
+        root_connection_matrix = np.full((len(clusters), len(clusters)), float('inf'))
+        for i in range(len(clusters)):
+            for j in range(i + 1, len(clusters)):
+                cluster_a_nodes = clusters[i]
+                cluster_b_nodes = clusters[j]
+
+                min_weight = float('inf')
+                for node_a in cluster_a_nodes:
+                    for node_b in cluster_b_nodes:
+                        weight = distance_matrix[node_a, node_b]
+                        if weight < min_weight:
+                            min_weight = weight
+
+                if min_weight != float('inf'):
+                    root_connection_matrix[i, j] = min_weight
+                    root_connection_matrix[j, i] = min_weight
+
+        pseudo_root_cluster = list(range(len(clusters)))
+        start_pseudo_root_index = 0
+
+        mst_root_edges, _ = compute_mst_for_cluster(pseudo_root_cluster, root_connection_matrix,
+                                                    start_pseudo_root_index)
+
+        print(f"  Inter-cluster connecting edges:")
+        for edge in mst_root_edges:
+            source_root_id = root_nodes[edge[0]]
+            target_root_id = root_nodes[edge[1]]
+            weight = edge[2]
+            comprehensive_mst.append((source_root_id, target_root_id, weight))
+            print(f"    Edge: {source_root_id} -> {target_root_id}, Weight: {weight}")
+    else:
+        print("  Only one cluster, no inter-cluster connections needed.")
+
+    for mst_edges in cluster_mst_edges:
+        comprehensive_mst.extend(mst_edges)
+
+    return comprehensive_mst
+
+
+# Implementation of Algorithm 4
+def find_mon(comprehensive_mst, node_index):
+    """
+    Finds the MST Optimal Neighbors (MON) for a given node.
+    This implements Algorithm 4.
+
+    Args:
+        comprehensive_mst (list): The list of edges forming the global MST.
+        node_index (int): The index of the node to find neighbors for.
+
+    Returns:
+        dict: A dictionary of optimal neighbors, mapping neighbor node index to edge weight.
+    """
+    mon_neighbors = {}
+
+    # 3: for sj in MSTcom do
+    for source, target, weight in comprehensive_mst:
+        # 4: if sj = si then
+        if source == node_index:
+            # 5-7: Add neighbor and weight
+            mon_neighbors[target] = weight
+        elif target == node_index:
+            mon_neighbors[source] = weight
+
+    return mon_neighbors
+
+
 if __name__ == "__main__":
-    # Set up argument parser
     parser = argparse.ArgumentParser(
         description="Perform Agglomerative Clustering on a network graph from a JSON file.")
-
     parser.add_argument("--json_file_path", type=str, help="Path to the JSON file containing the graph topology.",
                         required=True)
     parser.add_argument("--num_clusters", type=int, help="Desired number of clusters (M).", required=True)
-
-    # Parse command-line arguments
     args = parser.parse_args()
 
     # json_file_path = args.json_file_path
@@ -190,7 +289,6 @@ if __name__ == "__main__":
         if M > num_nodes:
             print(
                 f"Warning: Desired number of clusters (M={M}) is greater than the total number of nodes ({num_nodes}).")
-            print(f"Clustering will result in {num_nodes} clusters, where each node is its own cluster.")
             M = num_nodes
 
         print("\n--- Loaded Distance Matrix ---")
@@ -199,16 +297,14 @@ if __name__ == "__main__":
         print(distance_matrix)
         print("\n")
 
-        # Step 1: Apply the agglomerative clustering algorithm
+        # Phase 1: Agglomerative Clustering
         clustered_result = agglomerative_clustering(num_nodes, M, distance_matrix)
-
         index_to_id = {v: k for k, v in id_to_index.items()}
         final_clusters_with_ids = [[index_to_id[node_index] for node_index in cluster] for cluster in clustered_result]
 
-        # Step 2: Select a random leader for each cluster.
+        # Phase 2: Leader Selection and Announcement
         cluster_leaders = select_cluster_leaders(clustered_result, index_to_id)
 
-        # Step 3: "Announce" the leaders by printing the results.
         print(f"--- BNSF Process Completed ---")
         print(f"\n--- Final Clusters (M = {M}) ---")
         for i, cluster in enumerate(final_clusters_with_ids):
@@ -217,7 +313,30 @@ if __name__ == "__main__":
         print(f"\n--- Leader Selection & Announcement ---")
         for cluster_name, leader_id in cluster_leaders.items():
             print(f"{cluster_name} Leader: {leader_id}")
-            print(f"   (This node is now responsible for building the MST for its cluster and broadcasting it.)")
+
+        # Phase 3: MST Construction
+        comprehensive_mst = construct_comprehensive_mst(clustered_result, distance_matrix)
+
+        print(f"\n--- Comprehensive MST for the Entire Network ---")
+        for i, edge in enumerate(comprehensive_mst):
+            source_id = index_to_id[edge[0]]
+            target_id = index_to_id[edge[1]]
+            weight = edge[2]
+            print(f"  Edge {i + 1}: {source_id} -> {target_id}, Weight: {weight}")
+
+        # Phase 4: Neighbor Selection
+        print(f"\n--- Phase 4: Neighbor Selection (MON) ---")
+        for node_index in range(num_nodes):
+            mon = find_mon(comprehensive_mst, node_index)
+            node_id = index_to_id[node_index]
+
+            print(f"  Node {node_id}'s Optimal Neighbors:")
+            if mon:
+                for neighbor_index, weight in mon.items():
+                    neighbor_id = index_to_id[neighbor_index]
+                    print(f"    - {neighbor_id} (Weight: {weight})")
+            else:
+                print(f"    - No optimal neighbors found in MST.")
 
     except json.JSONDecodeError:
         print(f"Error: Could not decode JSON from '{json_file_path}'. Please ensure it's a valid JSON file.")

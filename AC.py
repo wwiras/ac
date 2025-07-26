@@ -125,7 +125,6 @@ def compute_mst_for_cluster(cluster_nodes, distance_matrix, start_node_index):
     Constructs an MST for a single cluster using a Prim's-like approach.
     """
     local_index_map = {node: i for i, node in enumerate(cluster_nodes)}
-
     num_cluster_nodes = len(cluster_nodes)
     start_local_index = local_index_map[start_node_index]
 
@@ -234,26 +233,15 @@ def construct_comprehensive_mst(clusters, distance_matrix):
     return comprehensive_mst
 
 
-# Implementation of Algorithm 4
 def find_mon(comprehensive_mst, node_index):
     """
     Finds the MST Optimal Neighbors (MON) for a given node.
     This implements Algorithm 4.
-
-    Args:
-        comprehensive_mst (list): The list of edges forming the global MST.
-        node_index (int): The index of the node to find neighbors for.
-
-    Returns:
-        dict: A dictionary of optimal neighbors, mapping neighbor node index to edge weight.
     """
     mon_neighbors = {}
 
-    # 3: for sj in MSTcom do
     for source, target, weight in comprehensive_mst:
-        # 4: if sj = si then
         if source == node_index:
-            # 5-7: Add neighbor and weight
             mon_neighbors[target] = weight
         elif target == node_index:
             mon_neighbors[source] = weight
@@ -269,7 +257,6 @@ if __name__ == "__main__":
     parser.add_argument("--num_clusters", type=int, help="Desired number of clusters (M).", required=True)
     args = parser.parse_args()
 
-    # json_file_path = args.json_file_path
     json_file_path = os.path.join("topology", args.json_file_path)
     print(f"Loading network from : {json_file_path}")
     M = args.num_clusters
@@ -337,6 +324,42 @@ if __name__ == "__main__":
                     print(f"    - {neighbor_id} (Weight: {weight})")
             else:
                 print(f"    - No optimal neighbors found in MST.")
+
+        # Phase 5: Build new overlay topology JSON file
+        print(f"\n--- Phase 5: Building New Overlay Topology File ---")
+
+        # Get the original filename without the path or extension
+        base_name = os.path.basename(json_file_path)
+        file_name, file_extension = os.path.splitext(base_name)
+
+        # Construct the new filename
+        new_file_name = f"{file_name}_AC{file_extension}"
+
+        # Get the directory of the original file
+        output_dir = os.path.dirname(json_file_path)
+        new_file_path = os.path.join(output_dir, new_file_name)
+
+        # Build the JSON data structure for the new overlay
+        nodes_list = [{"id": node_id} for node_id in id_to_index.keys()]
+        edges_list = []
+        for source_index, target_index, weight in comprehensive_mst:
+            source_id = index_to_id[source_index]
+            target_id = index_to_id[target_index]
+            edges_list.append({"source": source_id, "target": target_id, "weight": weight})
+
+        new_topology = {
+            "directed": False,
+            "multigraph": False,
+            "graph": {},
+            "nodes": nodes_list,
+            "edges": edges_list
+        }
+
+        # Save the new JSON file
+        with open(new_file_path, 'w') as f:
+            json.dump(new_topology, f, indent=2)
+
+        print(f"Successfully created new overlay topology file at: {new_file_path}")
 
     except json.JSONDecodeError:
         print(f"Error: Could not decode JSON from '{json_file_path}'. Please ensure it's a valid JSON file.")
