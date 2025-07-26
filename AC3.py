@@ -120,16 +120,31 @@ def select_cluster_leaders(clusters, index_to_id_map):
     return cluster_leaders
 
 
+# Implementation of Algorithm 2
 def compute_mst_for_cluster(cluster_nodes, distance_matrix, start_node_index):
     """
-    Constructs an MST for a single cluster using a Prim's-like approach.
+    Constructs an MST for a single cluster using a Prim's-like approach
+    based on the description of Algorithm 2.
+
+    Args:
+        cluster_nodes (list): List of node indices belonging to the cluster.
+        distance_matrix (np.array): The global distance matrix.
+        start_node_index (int): The index of the starting node for the MST.
+
+    Returns:
+        tuple: A tuple containing:
+               - The parent array (p) for each node in the cluster's MST.
+               - The root node index of the MST.
     """
+    # A dictionary to map global index to local position for easier management
     local_index_map = {node: i for i, node in enumerate(cluster_nodes)}
 
     num_cluster_nodes = len(cluster_nodes)
     start_local_index = local_index_map[start_node_index]
 
+    # d[i] represents the minimum distance to a node from the MST
     d = np.full(num_cluster_nodes, float('inf'))
+    # p[i] represents the parent node
     p = np.full(num_cluster_nodes, -1, dtype=int)
 
     d[start_local_index] = 0
@@ -171,9 +186,11 @@ def compute_mst_for_cluster(cluster_nodes, distance_matrix, start_node_index):
     return mst_edges, root_node_index
 
 
+# Implementation of Algorithm 3
 def construct_comprehensive_mst(clusters, distance_matrix):
     """
     Constructs a comprehensive MST (MSTcom) for the entire network.
+    This function implements the logic of Algorithm 3.
     """
     comprehensive_mst = []
     root_nodes = []
@@ -195,6 +212,7 @@ def construct_comprehensive_mst(clusters, distance_matrix):
 
     print("\n--- Connecting MST Root Nodes ---")
     if len(root_nodes) > 1:
+        # Step 1: Find the minimum weight edge between each pair of clusters
         root_connection_matrix = np.full((len(clusters), len(clusters)), float('inf'))
         for i in range(len(clusters)):
             for j in range(i + 1, len(clusters)):
@@ -212,12 +230,18 @@ def construct_comprehensive_mst(clusters, distance_matrix):
                     root_connection_matrix[i, j] = min_weight
                     root_connection_matrix[j, i] = min_weight
 
+        # Step 2: Build a pseudo-cluster of root nodes to find the MST of their connections
+        # The indices of the new cluster are just 0, 1, ..., M-1
         pseudo_root_cluster = list(range(len(clusters)))
+
+        # We need to map the pseudo-root indices back to the actual root node indices
+        # Let's use the first root node as the start for this inter-cluster MST
         start_pseudo_root_index = 0
 
         mst_root_edges, _ = compute_mst_for_cluster(pseudo_root_cluster, root_connection_matrix,
                                                     start_pseudo_root_index)
 
+        # Step 3: Add these inter-cluster edges to the comprehensive MST
         print(f"  Inter-cluster connecting edges:")
         for edge in mst_root_edges:
             source_root_id = root_nodes[edge[0]]
@@ -228,37 +252,11 @@ def construct_comprehensive_mst(clusters, distance_matrix):
     else:
         print("  Only one cluster, no inter-cluster connections needed.")
 
+    # Add intra-cluster MST edges to the comprehensive list
     for mst_edges in cluster_mst_edges:
         comprehensive_mst.extend(mst_edges)
 
     return comprehensive_mst
-
-
-# Implementation of Algorithm 4
-def find_mon(comprehensive_mst, node_index):
-    """
-    Finds the MST Optimal Neighbors (MON) for a given node.
-    This implements Algorithm 4.
-
-    Args:
-        comprehensive_mst (list): The list of edges forming the global MST.
-        node_index (int): The index of the node to find neighbors for.
-
-    Returns:
-        dict: A dictionary of optimal neighbors, mapping neighbor node index to edge weight.
-    """
-    mon_neighbors = {}
-
-    # 3: for sj in MSTcom do
-    for source, target, weight in comprehensive_mst:
-        # 4: if sj = si then
-        if source == node_index:
-            # 5-7: Add neighbor and weight
-            mon_neighbors[target] = weight
-        elif target == node_index:
-            mon_neighbors[source] = weight
-
-    return mon_neighbors
 
 
 if __name__ == "__main__":
@@ -323,20 +321,6 @@ if __name__ == "__main__":
             target_id = index_to_id[edge[1]]
             weight = edge[2]
             print(f"  Edge {i + 1}: {source_id} -> {target_id}, Weight: {weight}")
-
-        # Phase 4: Neighbor Selection
-        print(f"\n--- Phase 4: Neighbor Selection (MON) ---")
-        for node_index in range(num_nodes):
-            mon = find_mon(comprehensive_mst, node_index)
-            node_id = index_to_id[node_index]
-
-            print(f"  Node {node_id}'s Optimal Neighbors:")
-            if mon:
-                for neighbor_index, weight in mon.items():
-                    neighbor_id = index_to_id[neighbor_index]
-                    print(f"    - {neighbor_id} (Weight: {weight})")
-            else:
-                print(f"    - No optimal neighbors found in MST.")
 
     except json.JSONDecodeError:
         print(f"Error: Could not decode JSON from '{json_file_path}'. Please ensure it's a valid JSON file.")
