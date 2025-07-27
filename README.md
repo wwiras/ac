@@ -29,7 +29,7 @@ The input are BA topology (json) and M total clusters. Once AC processed complet
 is generated in json file. This new file name is formatted by combining its original filename plus "AC"
 in the end.
 ```shell
-(venv) wwiras@wwirass-MacBook-Air ac % python AC.py --json_file_path nodes10_Jul262025125801_BA5.json --num_clusters 3
+(venv) $ python AC.py --json_file_path nodes10_Jul262025125801_BA5.json --num_clusters 3
 Loading network from : topology/nodes10_Jul262025125801_BA5.json
 Total cluster(s), M : 3
 
