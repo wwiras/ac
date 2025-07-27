@@ -124,5 +124,5 @@ Successfully created new overlay topology file at: topology/nodes10_Jul262025125
 ### Step 3 - Test Newly Generated Agglomerative Clustering (AC) in the simulator
 The input are BA topology (json) and M total clusters. Once AC processed completed, a new overlay network
 is generated in json file. This new file name is formatted by combining its original filename plus "AC"
-in the end.
+in the end. In the example above, the new json file (overlay network) is "nodes10_Jul262025125801_BA5_AC.json" .
 ```shell
