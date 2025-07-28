@@ -3,6 +3,7 @@ import numpy as np
 import argparse
 import os
 import random
+import time
 
 
 def load_graph_from_json(json_file_path):
@@ -285,17 +286,24 @@ if __name__ == "__main__":
         print("\n")
 
         # Phase 1: Agglomerative Clustering
+        start_time = time.perf_counter()
         clustered_result = agglomerative_clustering(num_nodes, M, distance_matrix)
+        end_time = time.perf_counter()
+
+        # Convert time to milliseconds
+        clustering_time_ms = (end_time - start_time) * 1000
+
         index_to_id = {v: k for k, v in id_to_index.items()}
         final_clusters_with_ids = [[index_to_id[node_index] for node_index in cluster] for cluster in clustered_result]
 
-        # Phase 2: Leader Selection and Announcement
-        cluster_leaders = select_cluster_leaders(clustered_result, index_to_id)
-
         print(f"--- BNSF Process Completed ---")
+        print(f"\nTime taken to produce AC clusters: {clustering_time_ms:.4f} milliseconds")
         print(f"\n--- Final Clusters (M = {M}) ---")
         for i, cluster in enumerate(final_clusters_with_ids):
             print(f"Cluster {i + 1}: {cluster}")
+
+        # Phase 2: Leader Selection and Announcement
+        cluster_leaders = select_cluster_leaders(clustered_result, index_to_id)
 
         print(f"\n--- Leader Selection & Announcement ---")
         for cluster_name, leader_id in cluster_leaders.items():
@@ -328,18 +336,12 @@ if __name__ == "__main__":
         # Phase 5: Build new overlay topology JSON file
         print(f"\n--- Phase 5: Building New Overlay Topology File ---")
 
-        # Get the original filename without the path or extension
         base_name = os.path.basename(json_file_path)
         file_name, file_extension = os.path.splitext(base_name)
-
-        # Construct the new filename
-        new_file_name = f"{file_name}_AC{file_extension}"
-
-        # Get the directory of the original file
+        new_file_name = f"{file_name}_AC{M}{file_extension}"
         output_dir = os.path.dirname(json_file_path)
         new_file_path = os.path.join(output_dir, new_file_name)
 
-        # Build the JSON data structure for the new overlay
         nodes_list = [{"id": node_id} for node_id in id_to_index.keys()]
         edges_list = []
         for source_index, target_index, weight in comprehensive_mst:
@@ -352,14 +354,17 @@ if __name__ == "__main__":
             "multigraph": False,
             "graph": {},
             "nodes": nodes_list,
-            "edges": edges_list
+            "edges": edges_list,
+            "total_clusters": M,
+            "clustering_time_ms": f"{clustering_time_ms:.4f}"
         }
 
-        # Save the new JSON file
         with open(new_file_path, 'w') as f:
             json.dump(new_topology, f, indent=2)
 
         print(f"Successfully created new overlay topology file at: {new_file_path}")
+        print(f"Total clusters (M) recorded in file: {M}")
+        print(f"Clustering time recorded in file: {clustering_time_ms:.4f} milliseconds")
 
     except json.JSONDecodeError:
         print(f"Error: Could not decode JSON from '{json_file_path}'. Please ensure it's a valid JSON file.")
